@@ -152,15 +152,24 @@ def main():
 	output_dir.mkdir(exist_ok=True)
 	for group_id, artifact_id, _ in load_managed_dependencies(args.source):
 		package_name = f'{group_id}.{artifact_id}'
-		latest_release = find_latest_release(args.owner, to_repo_name(group_id, artifact_id))
+		repo_name = to_repo_name(group_id, artifact_id)
+		print(f'Checking {package_name} from repo {repo_name}')
+		latest_release = find_latest_release(args.owner, repo_name)
 		if latest_release is None:
+			print(f'  no release found for {repo_name}')
 			continue
 		version = latest_release.get('tag_name', '').removeprefix('v')
-		if not version or package_has_version(args.owner, package_name, version):
+		if not version:
+			print(f'  latest release for {repo_name} has no usable tag')
+			continue
+		if package_has_version(args.owner, package_name, version):
+			print(f'  package version already present: {package_name}:{version}')
 			continue
 		asset = next((asset for asset in latest_release.get('assets', []) if asset.get('name', '').endswith('.nar')), None)
 		if asset is None:
+			print(f'  no .nar release asset found for {repo_name}:{version}')
 			continue
+		print(f'  downloading asset {asset.get("name")}')
 		asset_path = download_asset(asset, output_dir)
 		released_group_id, released_artifact_id, released_version = extract_coordinates(asset_path)
 		if (released_group_id, released_artifact_id, released_version) != (group_id, artifact_id, version):
@@ -169,6 +178,7 @@ def main():
 				f'expected {(group_id, artifact_id, version)} got '
 				f'{(released_group_id, released_artifact_id, released_version)}'
 			)
+		print(f'  publishing {package_name}:{version} to GitHub Maven')
 		deploy_file(asset_path, group_id, artifact_id, version)
 
 
