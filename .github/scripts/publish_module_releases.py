@@ -69,8 +69,7 @@ def load_managed_dependencies(source_path):
 
 
 def to_repo_name(group_id, artifact_id):
-	parts = group_id.split('.') + [artifact_id]
-	return 'nabu-' + '-'.join(parts)
+	return group_id.replace('.', '-') + '-' + artifact_id
 
 
 def find_latest_release(owner, repo):
