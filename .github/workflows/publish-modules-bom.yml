@@ -1,4 +1,4 @@
-name: Publish modules BOM
+name: Publish Modules BOM
 
 on:
   workflow_dispatch:
