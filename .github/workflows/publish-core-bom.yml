@@ -1,0 +1,59 @@
+name: Publish core BOM
+
+on:
+  workflow_dispatch:
+    inputs:
+      bomVersion:
+        description: Published version for core-bom
+        required: true
+        default: 1.0-SNAPSHOT
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-core-bom
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Check out poms repository
+        uses: actions/checkout@v4
+        with:
+          repository: nabu-platform/poms
+          path: poms
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      - name: Generate core BOM from latest published packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/generate_bom.py \
+            --source poms/core.xml \
+            --output core-bom.xml \
+            --owner nabu-platform \
+            --bom-artifact-id core-bom \
+            --bom-version "${{ inputs.bomVersion }}"
+
+      - name: Publish core BOM
+        run: >-
+          mvn -B deploy:deploy-file
+          -Durl=https://maven.pkg.github.com/nabu-platform/maven
+          -DrepositoryId=github
+          -Dfile=core-bom.xml
+          -DpomFile=core-bom.xml
+          -Dpackaging=pom
