@@ -40,6 +40,34 @@ def find_text(element, tag):
 	return child.text if child is not None else None
 
 
+def load_states(state_path):
+	with open(state_path, 'r', encoding='utf-8') as handle:
+		return json.load(handle)
+
+
+def save_states(state_path, states):
+	with open(state_path, 'w', encoding='utf-8') as handle:
+		json.dump(states, handle, indent=2, sort_keys=True)
+		handle.write('\n')
+
+
+def ensure_states(state_path, dependencies):
+	states = load_states(state_path)
+	changed = False
+	for dependency in dependencies:
+		groupId = find_text(dependency, 'groupId')
+		artifactId = find_text(dependency, 'artifactId')
+		if not groupId or not artifactId:
+			continue
+		key = f'{groupId}:{artifactId}'
+		if key not in states:
+			states[key] = 'active'
+			changed = True
+	if changed:
+		save_states(state_path, states)
+	return states
+
+
 def choose_latest_version(payload):
 	latest_entry = None
 	for entry in payload:
@@ -53,7 +81,7 @@ def choose_latest_version(payload):
 	return latest_entry[1] if latest_entry is not None else None
 
 
-def collect_latest_versions(owner, dependencies):
+def collect_latest_versions(owner, dependencies, states):
 	token = os.environ.get('GITHUB_TOKEN')
 	if not token:
 		raise RuntimeError('GITHUB_TOKEN is required')
@@ -62,6 +90,10 @@ def collect_latest_versions(owner, dependencies):
 		groupId = find_text(dependency, 'groupId')
 		artifactId = find_text(dependency, 'artifactId')
 		if not groupId or not artifactId:
+			continue
+		state_key = f'{groupId}:{artifactId}'
+		if states.get(state_key) == 'retired':
+			print(f'Skipping retired module {state_key}')
 			continue
 		packageName = f'{groupId}.{artifactId}'
 		url = (
@@ -87,7 +119,7 @@ def collect_latest_versions(owner, dependencies):
 	return latest
 
 
-def build_bom(sourcePath, outputPath, bomArtifactId, bomVersion, owner):
+def build_bom(sourcePath, outputPath, bomArtifactId, bomVersion, owner, statePath):
 	tree = ET.parse(sourcePath)
 	root = tree.getroot()
 	dependencyManagement = find_child(root, 'dependencyManagement')
@@ -97,7 +129,8 @@ def build_bom(sourcePath, outputPath, bomArtifactId, bomVersion, owner):
 	if dependenciesNode is None:
 		raise RuntimeError(f'No managed dependencies found in {sourcePath}')
 	managedDependencies = find_children(dependenciesNode, 'dependency')
-	latestVersions = collect_latest_versions(owner, managedDependencies)
+	states = ensure_states(statePath, managedDependencies)
+	latestVersions = collect_latest_versions(owner, managedDependencies, states)
 
 	bomRoot = ET.Element(qualify('project'))
 	for tag, value in (
@@ -119,6 +152,9 @@ def build_bom(sourcePath, outputPath, bomArtifactId, bomVersion, owner):
 		version = find_text(dependency, 'version')
 		typeValue = find_text(dependency, 'type')
 		scopeValue = find_text(dependency, 'scope')
+		state_key = f'{groupId}:{artifactId}'
+		if states.get(state_key) == 'retired':
+			continue
 		override = latestVersions.get((groupId, artifactId))
 		bomDependency = ET.SubElement(bomDependencies, qualify('dependency'))
 		for childTag, childValue in (
@@ -144,11 +180,12 @@ if __name__ == '__main__':
 	parser.add_argument('--source', required=True)
 	parser.add_argument('--output', required=True)
 	parser.add_argument('--owner', required=True)
+	parser.add_argument('--state', required=True)
 	parser.add_argument('--bom-artifact-id', required=True)
 	parser.add_argument('--bom-version', required=True)
 	args = parser.parse_args()
 	try:
-		build_bom(args.source, args.output, args.bom_artifact_id, args.bom_version, args.owner)
+		build_bom(args.source, args.output, args.bom_artifact_id, args.bom_version, args.owner, args.state)
 	except Exception as exc:
 		print(f'Failed to generate BOM: {exc}', file=sys.stderr)
 		raise

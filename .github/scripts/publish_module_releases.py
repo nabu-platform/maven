@@ -50,6 +50,33 @@ def github_request(url):
 		return json.load(response)
 
 
+def load_states(state_path):
+	path = pathlib.Path(state_path)
+	if not path.exists():
+		return {}
+	with open(path, 'r', encoding='utf-8') as handle:
+		return json.load(handle)
+
+
+def save_states(state_path, states):
+	with open(state_path, 'w', encoding='utf-8') as handle:
+		json.dump(states, handle, indent=2, sort_keys=True)
+		handle.write('\n')
+
+
+def ensure_states(state_path, dependencies):
+	states = load_states(state_path)
+	changed = False
+	for group_id, artifact_id, _ in dependencies:
+		key = f'{group_id}:{artifact_id}'
+		if key not in states:
+			states[key] = 'active'
+			changed = True
+	if changed:
+		save_states(state_path, states)
+	return states
+
+
 def load_managed_dependencies(source_path):
 	root = ET.parse(source_path).getroot()
 	dependency_management = find_child(root, 'dependencyManagement')
@@ -146,10 +173,17 @@ def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--source', required=True)
 	parser.add_argument('--owner', required=True)
+	parser.add_argument('--state', required=True)
 	args = parser.parse_args()
 	output_dir = pathlib.Path('downloaded-releases')
 	output_dir.mkdir(exist_ok=True)
-	for group_id, artifact_id, _ in load_managed_dependencies(args.source):
+	dependencies = load_managed_dependencies(args.source)
+	states = ensure_states(args.state, dependencies)
+	for group_id, artifact_id, _ in dependencies:
+		state_key = f'{group_id}:{artifact_id}'
+		if states.get(state_key) == 'retired':
+			print(f'Skipping retired module {state_key}')
+			continue
 		package_name = f'{group_id}.{artifact_id}'
 		repo_name = to_repo_name(group_id, artifact_id)
 		print(f'Checking {package_name} from repo {repo_name}')

@@ -61,6 +61,7 @@ jobs:
             --source poms/core.xml \
             --output core-bom.xml \
             --owner nabu-platform \
+            --state modules-state.json \
             --bom-artifact-id core-bom \
             --bom-version "${{ inputs.bomVersion }}"
 

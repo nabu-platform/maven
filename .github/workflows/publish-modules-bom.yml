@@ -60,6 +60,7 @@ jobs:
         run: |
           python3 .github/scripts/publish_module_releases.py \
             --source poms/modules.xml \
+            --state modules-state.json \
             --owner nabu-platform
 
       - name: Generate modules BOM from latest published packages
@@ -70,6 +71,7 @@ jobs:
             --source poms/modules.xml \
             --output modules-bom.xml \
             --owner nabu-platform \
+            --state modules-state.json \
             --bom-artifact-id modules-bom \
             --bom-version "${{ inputs.bomVersion }}"
 
