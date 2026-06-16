@@ -40,6 +40,19 @@ def find_text(element, tag):
 	return child.text if child is not None else None
 
 
+def choose_latest_version(payload):
+	latest_entry = None
+	for entry in payload:
+		name = entry.get('name')
+		if not name:
+			continue
+		published_at = entry.get('updated_at') or entry.get('created_at') or ''
+		candidate = (published_at, name)
+		if latest_entry is None or candidate > latest_entry:
+			latest_entry = candidate
+	return latest_entry[1] if latest_entry is not None else None
+
+
 def collect_latest_versions(owner, dependencies):
 	token = os.environ.get('GITHUB_TOKEN')
 	if not token:
@@ -67,13 +80,10 @@ def collect_latest_versions(owner, dependencies):
 				continue
 			print(f'Failed to fetch package versions for {packageName}: {exc}', file=sys.stderr)
 			raise
-		versions = []
-		for entry in payload:
-			name = entry.get('name')
-			if name:
-				versions.append(name)
-		if versions:
-			latest[(groupId, artifactId)] = versions[0]
+		chosen = choose_latest_version(payload)
+		if chosen:
+			print(f'Using latest published version for {packageName}: {chosen}')
+			latest[(groupId, artifactId)] = chosen
 	return latest
 
 
