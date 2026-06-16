@@ -53,6 +53,15 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Publish module releases to GitHub Maven
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/publish_module_releases.py \
+            --source poms/modules.xml \
+            --owner nabu-platform
+
       - name: Generate modules BOM from latest published packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
