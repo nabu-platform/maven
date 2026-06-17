@@ -53,7 +53,6 @@ def save_states(state_path, states):
 
 def ensure_states(state_path, dependencies):
 	states = load_states(state_path)
-	changed = False
 	for dependency in dependencies:
 		groupId = find_text(dependency, 'groupId')
 		artifactId = find_text(dependency, 'artifactId')
@@ -61,10 +60,7 @@ def ensure_states(state_path, dependencies):
 			continue
 		key = f'{groupId}:{artifactId}'
 		if key not in states:
-			states[key] = 'active'
-			changed = True
-	if changed:
-		save_states(state_path, states)
+			continue
 	return states
 
 
@@ -92,6 +88,8 @@ def collect_latest_versions(owner, dependencies, states):
 		if not groupId or not artifactId:
 			continue
 		state_key = f'{groupId}:{artifactId}'
+		if state_key not in states:
+			continue
 		if states.get(state_key) == 'retired':
 			print(f'Skipping retired module {state_key}')
 			continue
@@ -153,6 +151,8 @@ def build_bom(sourcePath, outputPath, bomArtifactId, bomVersion, owner, statePat
 		typeValue = find_text(dependency, 'type')
 		scopeValue = find_text(dependency, 'scope')
 		state_key = f'{groupId}:{artifactId}'
+		if state_key not in states:
+			continue
 		if states.get(state_key) == 'retired':
 			continue
 		override = latestVersions.get((groupId, artifactId))

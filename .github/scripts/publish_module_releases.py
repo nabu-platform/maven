@@ -66,14 +66,10 @@ def save_states(state_path, states):
 
 def ensure_states(state_path, dependencies):
 	states = load_states(state_path)
-	changed = False
 	for group_id, artifact_id, _ in dependencies:
 		key = f'{group_id}:{artifact_id}'
 		if key not in states:
-			states[key] = 'active'
-			changed = True
-	if changed:
-		save_states(state_path, states)
+			continue
 	return states
 
 
@@ -197,6 +193,9 @@ def main():
 			continue
 		if package_has_version(args.owner, package_name, version):
 			print(f'  package version already present: {package_name}:{version}')
+			if state_key not in states:
+				states[state_key] = 'released'
+				save_states(args.state, states)
 			continue
 		asset = next((asset for asset in latest_release.get('assets', []) if asset.get('name', '').endswith('.nar')), None)
 		if asset is None:
@@ -213,6 +212,9 @@ def main():
 			)
 		print(f'  publishing {package_name}:{version} to GitHub Maven')
 		deploy_file(asset_path, group_id, artifact_id, version)
+		if state_key not in states:
+			states[state_key] = 'released'
+			save_states(args.state, states)
 
 
 if __name__ == '__main__':
