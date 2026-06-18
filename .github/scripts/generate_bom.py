@@ -144,11 +144,12 @@ def build_bom(sourcePath, outputPath, bomArtifactId, bomVersion, owner, statePat
 	bomDependencyManagement = ET.SubElement(bomRoot, qualify('dependencyManagement'))
 	bomDependencies = ET.SubElement(bomDependencyManagement, qualify('dependencies'))
 
+	defaultType = 'nar' if bomArtifactId == 'modules-bom' else None
 	for dependency in managedDependencies:
 		groupId = find_text(dependency, 'groupId')
 		artifactId = find_text(dependency, 'artifactId')
 		version = find_text(dependency, 'version')
-		typeValue = find_text(dependency, 'type')
+		typeValue = find_text(dependency, 'type') or defaultType
 		scopeValue = find_text(dependency, 'scope')
 		state_key = f'{groupId}:{artifactId}'
 		if state_key not in states:
