@@ -102,8 +102,10 @@ def find_latest_release(owner, repo):
 	except urllib.error.HTTPError as exc:
 		if exc.code == 404:
 			return None
+		if exc.code >= 500:
+			print(f'  failed to query latest release for {repo}: {exc}', file=sys.stderr)
+			return None
 		raise
-
 
 def package_has_version(owner, package_name, version):
 	url = f'https://api.github.com/orgs/{owner}/packages/maven/{urllib.parse.quote(package_name, safe="")}/versions?per_page=100'
