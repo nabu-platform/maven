@@ -59,7 +59,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 .github/scripts/publish_module_releases.py \
-            --source poms/modules.xml \
+            --source poms/modules-bom.xml \
             --state modules-state.json \
             --owner nabu-platform
 
