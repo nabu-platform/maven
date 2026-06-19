@@ -1,5 +1,8 @@
 {
   "nabu.data:pdf": "released",
+  "nabu.frameworks:dataTransactions": "retired",
+  "nabu.libs.misc:okapiBarcode": "retired",
+  "nabu.protocols.http:dataProvider": "retired",
   "nabu.protocols.http:reverseProxy": "retired",
   "nabu.types:structure": "released"
 }
