@@ -1,4 +1,5 @@
 {
   "nabu.data:pdf": "released",
+  "nabu.protocols.http:reverseProxy": "retired",
   "nabu.types:structure": "released"
 }
