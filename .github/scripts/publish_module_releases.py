@@ -92,7 +92,16 @@ def load_managed_dependencies(source_path):
 	return result
 
 
+EXPLICIT_REPOSITORIES = {
+	('nabu', 'maven-plugin-install'): 'maven-plugin-install',
+	('nabu', 'maven-plugin-environment'): 'maven-plugin-environment',
+}
+
+
 def to_repo_name(group_id, artifact_id):
+	override = EXPLICIT_REPOSITORIES.get((group_id, artifact_id))
+	if override is not None:
+		return override
 	return group_id.replace('.', '-') + '-' + artifact_id
 
 
