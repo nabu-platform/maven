@@ -19,7 +19,7 @@ These are still the authoritative lists of known core artifacts and modules.
 
 ### `nabu-platform/maven`
 This repository contains:
-- GitHub Actions workflows that publish `core-bom` and `modules-bom`
+- GitHub Actions workflows that publish `core-bom`, `modules-bom`, and the `modules` parent POM
 - scripts that ingest module release assets into GitHub Packages
 - the `modules-state.json` sidecar file
 - a small explicit allowlist for hybrid module-side build plugins
@@ -112,6 +112,7 @@ It performs three stages:
 1. Check out this repository and `nabu-platform/poms`
 2. Publish released module assets into GitHub Packages
 3. Generate and publish `modules-bom`
+4. Generate and publish the `modules` parent POM
 
 ### Stage 1: release asset ingestion
 
@@ -145,6 +146,8 @@ The current explicit allowlist is intentionally small and hardcoded in the workf
 - `nabu:maven-plugin-install:jar`
 - `nabu:maven-plugin-environment:jar`
 
+These plugin artifacts are published through the modules workflow, but they are no longer added to the generated `modules-bom`. Their versions are instead written into the generated `be.nabu:modules` parent POM.
+
 Published package example:
 - `nabu.types:structure:1.13-SNAPSHOT.20260616130811:nar`
 
@@ -168,6 +171,11 @@ Published BOM example:
 - `be.nabu:modules-bom:1.0-SNAPSHOT`
 
 This BOM is a snapshot artifact. Its own top-level version stays `1.0-SNAPSHOT`, while the managed dependency entries inside it are updated to concrete released package versions.
+
+The generated parent example is:
+- `be.nabu:modules:1.0-SNAPSHOT`
+
+That parent imports `modules-bom` and carries `pluginManagement` for the Nabu Maven plugins.
 
 ## BOM contents during bootstrap
 

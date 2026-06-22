@@ -75,9 +75,7 @@ jobs:
             --owner nabu-platform \
             --state modules-state.json \
             --bom-artifact-id modules-bom \
-            --bom-version "${{ inputs.bomVersion }}" \
-            --include nabu:maven-plugin-install:jar \
-            --include nabu:maven-plugin-environment:jar
+            --bom-version "${{ inputs.bomVersion }}"
 
       - name: Publish modules BOM
         run: >-
@@ -86,6 +84,27 @@ jobs:
           -DrepositoryId=github
           -Dfile=modules-bom.xml
           -DpomFile=modules-bom.xml
+          -Dpackaging=pom
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate modules parent POM
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/generate_modules_parent.py \
+            --output modules.xml \
+            --version "${{ inputs.bomVersion }}" \
+            --owner nabu-platform
+
+      - name: Publish modules parent POM
+        run: >-
+          mvn -B deploy:deploy-file
+          -Durl=https://maven.pkg.github.com/nabu-platform/maven
+          -DrepositoryId=github
+          -Dfile=modules.xml
+          -DpomFile=modules.xml
           -Dpackaging=pom
         env:
           GITHUB_ACTOR: ${{ github.actor }}
