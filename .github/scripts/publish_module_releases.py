@@ -241,7 +241,13 @@ def main():
 				f'{(released_group_id, released_artifact_id, released_version)}'
 			)
 		print(f'  publishing {package_name}:{version} to GitHub Maven as {packaging}')
-		deploy_file(asset_path, group_id, artifact_id, version, packaging)
+		try:
+			deploy_file(asset_path, group_id, artifact_id, version, packaging)
+		except subprocess.CalledProcessError:
+			if package_has_version(args.owner, package_name, version):
+				print(f'  package version became available during publish: {package_name}:{version}')
+			else:
+				raise
 		if state_key not in states:
 			states[state_key] = 'released'
 			save_states(args.state, states)

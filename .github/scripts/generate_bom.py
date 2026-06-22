@@ -130,7 +130,7 @@ def build_explicit_dependency(groupId, artifactId, packaging):
 	return dependency
 
 
-def parse_explicit_dependencies(entries):
+def parse_explicit_dependencies(entries, owner):
 	dependencies = []
 	for entry in entries:
 		parts = entry.split(':')
@@ -141,6 +141,27 @@ def parse_explicit_dependencies(entries):
 			packaging = 'jar'
 		else:
 			raise RuntimeError(f'Invalid explicit dependency format: {entry}')
+		packageName = f'{groupId}.{artifactId}'
+		url = (
+			f'https://api.github.com/orgs/{owner}/packages/maven/'
+			f'{urllib.parse.quote(packageName, safe="")}/versions?per_page=1'
+		)
+		request = urllib.request.Request(url)
+		request.add_header('Accept', 'application/vnd.github+json')
+		request.add_header('Authorization', f'Bearer {os.environ["GITHUB_TOKEN"]}')
+		request.add_header('X-GitHub-Api-Version', '2022-11-28')
+		try:
+			with urllib.request.urlopen(request) as response:
+				payload = json.load(response)
+		except urllib.error.HTTPError as exc:
+			if exc.code == 404:
+				print(f'Skipping unpublished explicit dependency {groupId}:{artifactId}')
+				continue
+			print(f'Failed to fetch package versions for {packageName}: {exc}', file=sys.stderr)
+			raise
+		if not payload:
+			print(f'Skipping unpublished explicit dependency {groupId}:{artifactId}')
+			continue
 		dependencies.append(build_explicit_dependency(groupId, artifactId, packaging))
 	return dependencies
 
@@ -154,7 +175,7 @@ def build_bom(sourcePath, outputPath, bomArtifactId, bomVersion, owner, statePat
 	dependenciesNode = find_child(dependencyManagement, 'dependencies')
 	if dependenciesNode is None:
 		raise RuntimeError(f'No managed dependencies found in {sourcePath}')
-	managedDependencies = find_children(dependenciesNode, 'dependency') + parse_explicit_dependencies(explicitDependencies)
+	managedDependencies = find_children(dependenciesNode, 'dependency') + parse_explicit_dependencies(explicitDependencies, owner)
 	states = ensure_states(statePath, managedDependencies)
 	latestVersions = collect_latest_versions(owner, managedDependencies, states)
 
