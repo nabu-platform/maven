@@ -61,7 +61,9 @@ jobs:
           python3 .github/scripts/publish_module_releases.py \
             --source poms/modules-bom.xml \
             --state modules-state.json \
-            --owner nabu-platform
+            --owner nabu-platform \
+            --include nabu:maven-plugin-install:jar \
+            --include nabu:maven-plugin-environment:jar
 
       - name: Generate modules BOM from latest published packages
         env:
@@ -73,7 +75,9 @@ jobs:
             --owner nabu-platform \
             --state modules-state.json \
             --bom-artifact-id modules-bom \
-            --bom-version "${{ inputs.bomVersion }}"
+            --bom-version "${{ inputs.bomVersion }}" \
+            --include nabu:maven-plugin-install:jar \
+            --include nabu:maven-plugin-environment:jar
 
       - name: Publish modules BOM
         run: >-

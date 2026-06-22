@@ -168,15 +168,32 @@ def deploy_file(asset_path, group_id, artifact_id, version, packaging):
 	subprocess.run(cmd, check=True)
 
 
+def load_explicit_dependencies(entries):
+	result = []
+	for entry in entries:
+		parts = entry.split(':')
+		if len(parts) == 3:
+			group_id, artifact_id, packaging = parts
+		elif len(parts) == 2:
+			group_id, artifact_id = parts
+			packaging = 'jar'
+		else:
+			raise RuntimeError(f'Invalid explicit dependency format: {entry}')
+		result.append((group_id, artifact_id, '1.0-SNAPSHOT', packaging))
+	return result
+
+
 def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--source', required=True)
 	parser.add_argument('--owner', required=True)
 	parser.add_argument('--state', required=True)
+	parser.add_argument('--include', action='append', default=[])
 	args = parser.parse_args()
 	output_dir = pathlib.Path('downloaded-releases')
 	output_dir.mkdir(exist_ok=True)
 	dependencies = load_managed_dependencies(args.source)
+	dependencies.extend(load_explicit_dependencies(args.include))
 	states = ensure_states(args.state, dependencies)
 	for group_id, artifact_id, _, packaging in dependencies:
 		state_key = f'{group_id}:{artifact_id}'

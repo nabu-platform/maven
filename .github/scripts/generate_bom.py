@@ -117,7 +117,35 @@ def collect_latest_versions(owner, dependencies, states):
 	return latest
 
 
-def build_bom(sourcePath, outputPath, bomArtifactId, bomVersion, owner, statePath):
+def build_explicit_dependency(groupId, artifactId, packaging):
+	dependency = ET.Element(qualify('dependency'))
+	for tag, value in (
+		('groupId', groupId),
+		('artifactId', artifactId),
+		('version', '1.0-SNAPSHOT'),
+		('type', packaging),
+	):
+		element = ET.SubElement(dependency, qualify(tag))
+		element.text = value
+	return dependency
+
+
+def parse_explicit_dependencies(entries):
+	dependencies = []
+	for entry in entries:
+		parts = entry.split(':')
+		if len(parts) == 3:
+			groupId, artifactId, packaging = parts
+		elif len(parts) == 2:
+			groupId, artifactId = parts
+			packaging = 'jar'
+		else:
+			raise RuntimeError(f'Invalid explicit dependency format: {entry}')
+		dependencies.append(build_explicit_dependency(groupId, artifactId, packaging))
+	return dependencies
+
+
+def build_bom(sourcePath, outputPath, bomArtifactId, bomVersion, owner, statePath, explicitDependencies):
 	tree = ET.parse(sourcePath)
 	root = tree.getroot()
 	dependencyManagement = find_child(root, 'dependencyManagement')
@@ -126,7 +154,7 @@ def build_bom(sourcePath, outputPath, bomArtifactId, bomVersion, owner, statePat
 	dependenciesNode = find_child(dependencyManagement, 'dependencies')
 	if dependenciesNode is None:
 		raise RuntimeError(f'No managed dependencies found in {sourcePath}')
-	managedDependencies = find_children(dependenciesNode, 'dependency')
+	managedDependencies = find_children(dependenciesNode, 'dependency') + parse_explicit_dependencies(explicitDependencies)
 	states = ensure_states(statePath, managedDependencies)
 	latestVersions = collect_latest_versions(owner, managedDependencies, states)
 
@@ -184,9 +212,10 @@ if __name__ == '__main__':
 	parser.add_argument('--state', required=True)
 	parser.add_argument('--bom-artifact-id', required=True)
 	parser.add_argument('--bom-version', required=True)
+	parser.add_argument('--include', action='append', default=[])
 	args = parser.parse_args()
 	try:
-		build_bom(args.source, args.output, args.bom_artifact_id, args.bom_version, args.owner, args.state)
+		build_bom(args.source, args.output, args.bom_artifact_id, args.bom_version, args.owner, args.state, args.include)
 	except Exception as exc:
 		print(f'Failed to generate BOM: {exc}', file=sys.stderr)
 		raise

@@ -22,6 +22,7 @@ This repository contains:
 - GitHub Actions workflows that publish `core-bom` and `modules-bom`
 - scripts that ingest module release assets into GitHub Packages
 - the `modules-state.json` sidecar file
+- a small explicit allowlist for hybrid module-side build plugins
 
 This repository is also the GitHub Packages Maven host:
 - `https://maven.pkg.github.com/nabu-platform/maven`
@@ -120,6 +121,8 @@ Script:
 It reads the managed module list from:
 - `poms/modules.xml`
 
+It can also include a small explicit allowlist passed by workflow arguments for hybrid artifacts that are published with the module ecosystem but are not sourced from the full modules catalog.
+
 For each managed dependency, it:
 - maps Maven coordinates to a GitHub repository name
 - checks the latest GitHub Release in that repository
@@ -136,6 +139,11 @@ Repository mapping rule:
 Examples:
 - `nabu.types:structure` -> `nabu-types-structure`
 - `nabu.frameworks:tasks` -> `nabu-frameworks-tasks`
+- `nabu:maven-plugin-install` -> `nabu-maven-plugin-install`
+
+The current explicit allowlist is intentionally small and hardcoded in the workflow:
+- `nabu:maven-plugin-install:jar`
+- `nabu:maven-plugin-environment:jar`
 
 Published package example:
 - `nabu.types:structure:1.13-SNAPSHOT.20260616130811:nar`
@@ -147,6 +155,8 @@ Script:
 
 It reads the managed dependency list from:
 - `poms/modules.xml` or `poms/core.xml`
+
+It can also add a small explicit allowlist for hybrid artifacts that should appear in the published BOM without importing a much larger source catalog.
 
 For each entry, it:
 - queries GitHub Packages for published versions
