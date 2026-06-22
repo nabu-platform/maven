@@ -87,6 +87,12 @@ def build_parent(output_path, version, bom_version, owner):
 	add_text(dependency, 'type', 'pom')
 	add_text(dependency, 'scope', 'import')
 
+	plugin_repositories = ET.SubElement(root, qualify('pluginRepositories'))
+	plugin_repository = ET.SubElement(plugin_repositories, qualify('pluginRepository'))
+	add_text(plugin_repository, 'id', 'github')
+	add_text(plugin_repository, 'name', 'GitHub Packages')
+	add_text(plugin_repository, 'url', 'https://maven.pkg.github.com/nabu-platform/maven')
+
 	build = ET.SubElement(root, qualify('build'))
 	plugin_management = ET.SubElement(build, qualify('pluginManagement'))
 	plugins = ET.SubElement(plugin_management, qualify('plugins'))
