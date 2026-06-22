@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       bomVersion:
-        description: Floating published version for modules-bom/modules parent
+        description: Floating published version for modules-bom/projects parent
         required: true
         default: 1.0-SNAPSHOT
       releaseVersion:
-        description: Concrete published version for modules-bom/modules parent
+        description: Concrete published version for modules-bom/projects parent
         required: true
         default: 1.0-SNAPSHOT.20260622135217
 
@@ -117,45 +117,45 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate concrete modules parent POM
+      - name: Generate concrete projects parent POM
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 .github/scripts/generate_modules_parent.py \
-            --output modules-release.xml \
+            --output projects-release.xml \
             --version "${{ inputs.releaseVersion }}" \
             --bom-version "${{ inputs.releaseVersion }}" \
             --owner nabu-platform
 
-      - name: Publish concrete modules parent POM
+      - name: Publish concrete projects parent POM
         run: >-
           mvn -B deploy:deploy-file
           -Durl=https://maven.pkg.github.com/nabu-platform/maven
           -DrepositoryId=github
-          -Dfile=modules-release.xml
-          -DpomFile=modules-release.xml
+          -Dfile=projects-release.xml
+          -DpomFile=projects-release.xml
           -Dpackaging=pom
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate floating modules parent alias
+      - name: Generate floating projects parent alias
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 .github/scripts/generate_modules_parent.py \
-            --output modules.xml \
+            --output projects.xml \
             --version "${{ inputs.bomVersion }}" \
             --bom-version "${{ inputs.bomVersion }}" \
             --owner nabu-platform
 
-      - name: Publish floating modules parent alias
+      - name: Publish floating projects parent alias
         run: >-
           mvn -B deploy:deploy-file
           -Durl=https://maven.pkg.github.com/nabu-platform/maven
           -DrepositoryId=github
-          -Dfile=modules.xml
-          -DpomFile=modules.xml
+          -Dfile=projects.xml
+          -DpomFile=projects.xml
           -Dpackaging=pom
         env:
           GITHUB_ACTOR: ${{ github.actor }}

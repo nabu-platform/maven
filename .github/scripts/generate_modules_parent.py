@@ -72,7 +72,7 @@ def build_parent(output_path, version, bom_version, owner):
 	for tag, value in (
 		('modelVersion', '4.0.0'),
 		('groupId', 'be.nabu'),
-		('artifactId', 'modules'),
+		('artifactId', 'projects'),
 		('version', version),
 		('packaging', 'pom'),
 	):
@@ -119,5 +119,5 @@ if __name__ == '__main__':
 	try:
 		build_parent(args.output, args.version, args.bom_version, args.owner)
 	except Exception as exc:
-		print(f'Failed to generate modules parent: {exc}', file=sys.stderr)
+		print(f'Failed to generate projects parent: {exc}', file=sys.stderr)
 		raise

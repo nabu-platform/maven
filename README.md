@@ -19,7 +19,7 @@ These are still the authoritative lists of known core artifacts and modules.
 
 ### `nabu-platform/maven`
 This repository contains:
-- GitHub Actions workflows that publish `core-bom`, `modules-bom`, and the `modules` parent POM
+- GitHub Actions workflows that publish `core-bom`, `modules-bom`, and the `projects` parent POM
 - scripts that ingest module release assets into GitHub Packages
 - the `modules-state.json` sidecar file
 - a small explicit allowlist for hybrid module-side build plugins
@@ -51,7 +51,7 @@ The end-to-end flow for a module is:
 6. The central workflow downloads release assets that are not yet in GitHub Packages
 7. The central workflow publishes those assets into `nabu-platform/maven`
 8. The central workflow regenerates the BOM from the actually published package versions
-9. The central workflow publishes the new BOM snapshot
+9. The central workflow publishes the new BOM and parent artifacts
 
 In short:
 - tags create released module assets
@@ -107,12 +107,16 @@ This avoids cross-repo package write problems while keeping a single central Mav
 Main workflow:
 - `.github/workflows/publish-modules-bom.yml`
 
-It performs three stages:
+It performs four stages:
 
 1. Check out this repository and `nabu-platform/poms`
 2. Publish released module assets into GitHub Packages
 3. Generate and publish `modules-bom`
-4. Generate and publish the `modules` parent POM
+4. Generate and publish the `projects` parent POM
+
+Both the BOM and the parent are published twice:
+- as a floating development alias (`1.0-SNAPSHOT`)
+- as a concrete timestamped release version (for example `1.0-SNAPSHOT.20260622135330`)
 
 ### Stage 1: release asset ingestion
 
@@ -146,7 +150,7 @@ The current explicit allowlist is intentionally small and hardcoded in the workf
 - `nabu:maven-plugin-install:jar`
 - `nabu:maven-plugin-environment:jar`
 
-These plugin artifacts are published through the modules workflow, but they are no longer added to the generated `modules-bom`. Their versions are instead written into the generated `be.nabu:modules` parent POM.
+These plugin artifacts are published through the modules workflow, but they are no longer added to the generated `modules-bom`. Their versions are instead written into the generated `be.nabu:projects` parent POM.
 
 Published package example:
 - `nabu.types:structure:1.13-SNAPSHOT.20260616130811:nar`
@@ -167,15 +171,19 @@ For each entry, it:
 - substitutes that concrete version into the generated BOM
 - leaves the source version untouched if nothing was published yet
 
-Published BOM example:
-- `be.nabu:modules-bom:1.0-SNAPSHOT`
+Published BOM examples:
+- floating development alias: `be.nabu:modules-bom:1.0-SNAPSHOT`
+- concrete release: `be.nabu:modules-bom:1.0-SNAPSHOT.20260622135330`
 
-This BOM is a snapshot artifact. Its own top-level version stays `1.0-SNAPSHOT`, while the managed dependency entries inside it are updated to concrete released package versions.
+Published parent examples:
+- floating development alias: `be.nabu:projects:1.0-SNAPSHOT`
+- concrete release: `be.nabu:projects:1.0-SNAPSHOT.20260622135330`
 
-The generated parent example is:
-- `be.nabu:modules:1.0-SNAPSHOT`
+The floating alias stays on `1.0-SNAPSHOT`, while the concrete release is published with a timestamped version. In both cases the managed dependency entries inside the BOM are updated to concrete released package versions.
 
-That parent imports `modules-bom` and carries `pluginManagement` for the Nabu Maven plugins.
+The generated parent imports `modules-bom` and carries `pluginManagement` for the Nabu Maven plugins.
+
+The published parent is intentionally called `projects`, not `modules`, to avoid colliding with the existing local `be.nabu:modules` parent used in local module-development workflows.
 
 ## BOM contents during bootstrap
 
@@ -274,6 +282,73 @@ The workflows then publish using:
 
 This avoids ambiguity in `setup-java` server injection.
 
+## Development vs stabilized consumption
+
+There are two intended ways to consume the published ecosystem.
+
+### Development mode
+
+Use the floating parent or BOM version:
+- `be.nabu:projects:1.0-SNAPSHOT`
+- `be.nabu:modules-bom:1.0-SNAPSHOT`
+
+This means:
+- you want the latest published ecosystem state
+- the resolved content can move as new releases are ingested centrally
+- local Maven caches can keep older snapshot metadata or artifacts
+
+Because of that, development consumers should refresh snapshots explicitly:
+
+```bash
+mvn -U process-resources
+```
+
+Use `-U` whenever you want Maven to re-check the central GitHub Packages endpoint for newer snapshot metadata.
+
+### Stabilized mode
+
+Use the concrete timestamped parent or BOM version:
+- `be.nabu:projects:1.0-SNAPSHOT.20260622135330`
+- `be.nabu:modules-bom:1.0-SNAPSHOT.20260622135330`
+
+This means:
+- you want one fixed ecosystem definition
+- all dependency and plugin versions are frozen to that published point in time
+- no moving snapshot alias is involved
+
+This is the recommended mode for:
+- qlty
+- acceptance
+- production
+- any reproducible deployment pipeline
+
+### Recommended usage model
+
+A typical workflow is:
+- use `1.0-SNAPSHOT` during normal development while iterating quickly
+- run Maven with `-U` when you want to pick up the latest centrally published changes
+- once a set is validated, switch to the concrete timestamped parent version for stabilized environments
+
+## Parent versus BOM responsibilities
+
+The generated artifacts have different responsibilities:
+
+- `modules-bom`
+	- manages dependency versions for Nabu module artifacts
+	- does not manage Maven plugin versions
+- `projects` parent
+	- imports `modules-bom`
+	- manages the Nabu Maven plugin versions through `pluginManagement`
+	- activates `maven-plugin-install` by default
+
+This means module-builder projects normally only need one thing:
+- inherit `be.nabu:projects`
+
+That gives them:
+- dependency versions via the imported BOM
+- plugin versions via the parent POM
+- default execution of the dependency install plugin
+
 ## Current manual operations
 
 ### Release a module
@@ -289,8 +364,8 @@ This avoids ambiguity in `setup-java` server injection.
    - `Publish Modules BOM`
 3. This will:
    - import missing module releases into GitHub Packages
-   - regenerate `modules-bom`
-   - publish the updated BOM snapshot
+   - regenerate and publish a concrete `modules-bom` and `projects` parent version
+   - regenerate and publish the floating `1.0-SNAPSHOT` aliases for both
 
 ### Publish core BOM
 1. Go to `nabu-platform/maven`
