@@ -66,7 +66,7 @@ def save_states(state_path, states):
 
 def ensure_states(state_path, dependencies):
 	states = load_states(state_path)
-	for group_id, artifact_id, _ in dependencies:
+	for group_id, artifact_id, _, _ in dependencies:
 		key = f'{group_id}:{artifact_id}'
 		if key not in states:
 			continue
@@ -86,8 +86,9 @@ def load_managed_dependencies(source_path):
 		group_id = find_text(dependency, 'groupId')
 		artifact_id = find_text(dependency, 'artifactId')
 		version = find_text(dependency, 'version')
+		type_value = find_text(dependency, 'type') or 'jar'
 		if group_id and artifact_id and version:
-			result.append((group_id, artifact_id, version))
+			result.append((group_id, artifact_id, version, type_value))
 	return result
 
 
@@ -153,7 +154,7 @@ def download_asset(asset, output_dir):
 	return path
 
 
-def deploy_file(asset_path, group_id, artifact_id, version):
+def deploy_file(asset_path, group_id, artifact_id, version, packaging):
 	cmd = [
 		'mvn', '-B', 'deploy:deploy-file',
 		'-Durl=https://maven.pkg.github.com/nabu-platform/maven',
@@ -162,7 +163,7 @@ def deploy_file(asset_path, group_id, artifact_id, version):
 		f'-DgroupId={group_id}',
 		f'-DartifactId={artifact_id}',
 		f'-Dversion={version}',
-		'-Dpackaging=nar',
+		f'-Dpackaging={packaging}',
 	]
 	subprocess.run(cmd, check=True)
 
@@ -177,7 +178,7 @@ def main():
 	output_dir.mkdir(exist_ok=True)
 	dependencies = load_managed_dependencies(args.source)
 	states = ensure_states(args.state, dependencies)
-	for group_id, artifact_id, _ in dependencies:
+	for group_id, artifact_id, _, packaging in dependencies:
 		state_key = f'{group_id}:{artifact_id}'
 		if states.get(state_key) == 'retired':
 			print(f'Skipping retired module {state_key}')
@@ -199,9 +200,10 @@ def main():
 				states[state_key] = 'released'
 				save_states(args.state, states)
 			continue
-		asset = next((asset for asset in latest_release.get('assets', []) if asset.get('name', '').endswith('.nar')), None)
+		asset_suffix = '.nar' if packaging == 'nar' else '.jar'
+		asset = next((asset for asset in latest_release.get('assets', []) if asset.get('name', '').endswith(asset_suffix)), None)
 		if asset is None:
-			print(f'  no .nar release asset found for {repo_name}:{version}')
+			print(f'  no {asset_suffix} release asset found for {repo_name}:{version}')
 			continue
 		print(f'  downloading asset {asset.get("name")}')
 		asset_path = download_asset(asset, output_dir)
@@ -212,8 +214,8 @@ def main():
 				f'expected {(group_id, artifact_id, version)} got '
 				f'{(released_group_id, released_artifact_id, released_version)}'
 			)
-		print(f'  publishing {package_name}:{version} to GitHub Maven')
-		deploy_file(asset_path, group_id, artifact_id, version)
+		print(f'  publishing {package_name}:{version} to GitHub Maven as {packaging}')
+		deploy_file(asset_path, group_id, artifact_id, version, packaging)
 		if state_key not in states:
 			states[state_key] = 'released'
 			save_states(args.state, states)

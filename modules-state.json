@@ -4,5 +4,7 @@
   "nabu.libs.misc:okapiBarcode": "retired",
   "nabu.protocols.http:dataProvider": "retired",
   "nabu.protocols.http:reverseProxy": "retired",
-  "nabu.types:structure": "released"
+  "nabu.types:structure": "released",
+  "nabu:maven-plugin-environment": "released",
+  "nabu:maven-plugin-install": "released"
 }
