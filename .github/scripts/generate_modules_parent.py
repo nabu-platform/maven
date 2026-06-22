@@ -60,7 +60,7 @@ def add_text(parent, tag, value):
 	return element
 
 
-def build_parent(output_path, version, owner):
+def build_parent(output_path, version, bom_version, owner):
 	plugin_versions = {}
 	for group_id, artifact_id in PLUGIN_COORDINATES:
 		resolved = latest_version(owner, group_id, artifact_id)
@@ -83,7 +83,7 @@ def build_parent(output_path, version, owner):
 	dependency = ET.SubElement(dependencies, qualify('dependency'))
 	add_text(dependency, 'groupId', 'be.nabu')
 	add_text(dependency, 'artifactId', 'modules-bom')
-	add_text(dependency, 'version', version)
+	add_text(dependency, 'version', bom_version)
 	add_text(dependency, 'type', 'pom')
 	add_text(dependency, 'scope', 'import')
 
@@ -113,10 +113,11 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--output', required=True)
 	parser.add_argument('--version', required=True)
+	parser.add_argument('--bom-version', required=True)
 	parser.add_argument('--owner', required=True)
 	args = parser.parse_args()
 	try:
-		build_parent(args.output, args.version, args.owner)
+		build_parent(args.output, args.version, args.bom_version, args.owner)
 	except Exception as exc:
 		print(f'Failed to generate modules parent: {exc}', file=sys.stderr)
 		raise

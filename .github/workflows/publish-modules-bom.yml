@@ -4,9 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       bomVersion:
-        description: Published version for modules-bom
+        description: Floating published version for modules-bom/modules parent
         required: true
         default: 1.0-SNAPSHOT
+      releaseVersion:
+        description: Concrete published version for modules-bom/modules parent
+        required: true
+        default: 1.0-SNAPSHOT.20260622135217
 
 permissions:
   contents: read
@@ -65,7 +69,31 @@ jobs:
             --include nabu:maven-plugin-install:jar \
             --include nabu:maven-plugin-environment:jar
 
-      - name: Generate modules BOM from latest published packages
+      - name: Generate concrete modules BOM from latest published packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/generate_bom.py \
+            --source poms/modules-bom.xml \
+            --output modules-bom-release.xml \
+            --owner nabu-platform \
+            --state modules-state.json \
+            --bom-artifact-id modules-bom \
+            --bom-version "${{ inputs.releaseVersion }}"
+
+      - name: Publish concrete modules BOM
+        run: >-
+          mvn -B deploy:deploy-file
+          -Durl=https://maven.pkg.github.com/nabu-platform/maven
+          -DrepositoryId=github
+          -Dfile=modules-bom-release.xml
+          -DpomFile=modules-bom-release.xml
+          -Dpackaging=pom
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate floating modules BOM alias
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -77,7 +105,7 @@ jobs:
             --bom-artifact-id modules-bom \
             --bom-version "${{ inputs.bomVersion }}"
 
-      - name: Publish modules BOM
+      - name: Publish floating modules BOM alias
         run: >-
           mvn -B deploy:deploy-file
           -Durl=https://maven.pkg.github.com/nabu-platform/maven
@@ -89,16 +117,39 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate modules parent POM
+      - name: Generate concrete modules parent POM
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/generate_modules_parent.py \
+            --output modules-release.xml \
+            --version "${{ inputs.releaseVersion }}" \
+            --bom-version "${{ inputs.releaseVersion }}" \
+            --owner nabu-platform
+
+      - name: Publish concrete modules parent POM
+        run: >-
+          mvn -B deploy:deploy-file
+          -Durl=https://maven.pkg.github.com/nabu-platform/maven
+          -DrepositoryId=github
+          -Dfile=modules-release.xml
+          -DpomFile=modules-release.xml
+          -Dpackaging=pom
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate floating modules parent alias
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 .github/scripts/generate_modules_parent.py \
             --output modules.xml \
             --version "${{ inputs.bomVersion }}" \
+            --bom-version "${{ inputs.bomVersion }}" \
             --owner nabu-platform
 
-      - name: Publish modules parent POM
+      - name: Publish floating modules parent alias
         run: >-
           mvn -B deploy:deploy-file
           -Durl=https://maven.pkg.github.com/nabu-platform/maven
