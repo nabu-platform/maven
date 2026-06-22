@@ -66,10 +66,14 @@ def save_states(state_path, states):
 
 def ensure_states(state_path, dependencies):
 	states = load_states(state_path)
+	changed = False
 	for group_id, artifact_id, _, _ in dependencies:
 		key = f'{group_id}:{artifact_id}'
 		if key not in states:
-			continue
+			states[key] = 'released'
+			changed = True
+	if changed:
+		save_states(state_path, states)
 	return states
 
 
