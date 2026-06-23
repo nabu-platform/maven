@@ -212,6 +212,8 @@ def build_bom(sourcePath, outputPath, bomArtifactId, bomVersion, owner, statePat
 		if state_key in states and states.get(state_key) == 'retired':
 			continue
 		override = latestVersions.get((groupId, artifactId))
+		if is_internal and not override:
+			continue
 		bomDependency = ET.SubElement(bomDependencies, qualify('dependency'))
 		for childTag, childValue in (
 			('groupId', groupId),
