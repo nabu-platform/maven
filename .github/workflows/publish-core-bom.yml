@@ -61,7 +61,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python3 .github/scripts/publish_module_releases.py \
+          python3 .github/scripts/publish_core_releases.py \
             --source poms/core-bom.xml \
             --state core-state.json \
             --owner nabu-platform
