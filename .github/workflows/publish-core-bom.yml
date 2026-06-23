@@ -4,9 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       bomVersion:
-        description: Published version for core-bom
+        description: Floating published version for core-bom
         required: true
         default: 1.0-SNAPSHOT
+      releaseVersion:
+        description: Concrete published version for core-bom
+        required: true
+        default: 1.0-SNAPSHOT.20260623170000
 
 permissions:
   contents: read
@@ -53,7 +57,40 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate core BOM from latest published packages
+      - name: Publish core releases to GitHub Maven
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/publish_module_releases.py \
+            --source poms/core-bom.xml \
+            --state core-state.json \
+            --owner nabu-platform
+
+      - name: Generate concrete core BOM from latest published packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/generate_bom.py \
+            --source poms/core-bom.xml \
+            --output core-bom-release.xml \
+            --owner nabu-platform \
+            --state core-state.json \
+            --bom-artifact-id core-bom \
+            --bom-version "${{ inputs.releaseVersion }}"
+
+      - name: Publish concrete core BOM
+        run: >-
+          mvn -B deploy:deploy-file
+          -Durl=https://maven.pkg.github.com/nabu-platform/maven
+          -DrepositoryId=github
+          -Dfile=core-bom-release.xml
+          -DpomFile=core-bom-release.xml
+          -Dpackaging=pom
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate floating core BOM alias
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -61,11 +98,11 @@ jobs:
             --source poms/core-bom.xml \
             --output core-bom.xml \
             --owner nabu-platform \
-            --state modules-state.json \
+            --state core-state.json \
             --bom-artifact-id core-bom \
             --bom-version "${{ inputs.bomVersion }}"
 
-      - name: Publish core BOM
+      - name: Publish floating core BOM alias
         run: >-
           mvn -B deploy:deploy-file
           -Durl=https://maven.pkg.github.com/nabu-platform/maven
