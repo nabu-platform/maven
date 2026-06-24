@@ -88,7 +88,7 @@ def collect_latest_versions(owner, dependencies, states):
 		if not groupId or not artifactId:
 			continue
 		state_key = f'{groupId}:{artifactId}'
-		is_internal = groupId.startswith('nabu.') or groupId.startswith('be.nabu.')
+		is_internal = groupId == 'nabu' or groupId.startswith('nabu.') or groupId.startswith('be.nabu.')
 		if state_key not in states:
 			if is_internal:
 				continue
@@ -205,7 +205,7 @@ def build_bom(sourcePath, outputPath, bomArtifactId, bomVersion, owner, statePat
 		typeValue = find_text(dependency, 'type') or defaultType
 		scopeValue = find_text(dependency, 'scope')
 		state_key = f'{groupId}:{artifactId}'
-		is_internal = groupId.startswith('nabu.') or groupId.startswith('be.nabu.')
+		is_internal = groupId == 'nabu' or groupId.startswith('nabu.') or groupId.startswith('be.nabu.')
 		if state_key not in states:
 			if is_internal:
 				continue
