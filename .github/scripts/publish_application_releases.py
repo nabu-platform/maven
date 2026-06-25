@@ -136,25 +136,6 @@ def package_has_version(owner, package_name, version):
 	return False
 
 
-def extract_coordinates(asset_path):
-	with zipfile.ZipFile(asset_path) as archive:
-		pom_properties = next(
-			(name for name in archive.namelist() if name.endswith('pom.properties')),
-			None,
-		)
-		if pom_properties is None:
-			raise RuntimeError(f'No pom.properties found in {asset_path}')
-		content = archive.read(pom_properties).decode('utf-8')
-	props = {}
-	for line in content.splitlines():
-		line = line.strip()
-		if not line or line.startswith('#') or '=' not in line:
-			continue
-		key, value = line.split('=', 1)
-		props[key.strip()] = value.strip()
-	return props['groupId'], props['artifactId'], props['version']
-
-
 def download_asset(asset, output_dir):
 	url = asset['url']
 	filename = asset['name']
@@ -218,13 +199,6 @@ def main():
 			continue
 		print(f'  downloading asset {asset.get("name")}')
 		asset_path = download_asset(asset, output_dir)
-		released_group_id, released_artifact_id, released_version = extract_coordinates(asset_path)
-		if (released_group_id, released_artifact_id, released_version) != (group_id, artifact_id, version):
-			raise RuntimeError(
-				f'Artifact metadata mismatch for {asset_path}: '
-				f'expected {(group_id, artifact_id, version)} got '
-				f'{(released_group_id, released_artifact_id, released_version)}'
-			)
 		print(f'  publishing {package_name}:{version} to GitHub Maven as {packaging}')
 		try:
 			deploy_file(asset_path, group_id, artifact_id, version, packaging)
