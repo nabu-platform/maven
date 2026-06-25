@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import pathlib
 import sys
 import urllib.error
 import urllib.parse
