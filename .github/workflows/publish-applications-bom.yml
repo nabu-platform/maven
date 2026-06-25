@@ -1,0 +1,153 @@
+name: Publish Applications BOM
+
+on:
+  workflow_dispatch:
+    inputs:
+      bomVersion:
+        description: Floating published version for applications-bom/applications parent
+        required: true
+        default: 1.0-SNAPSHOT
+      releaseVersion:
+        description: Concrete published version for applications-bom/applications parent
+        required: true
+        default: 1.0-SNAPSHOT.20260623160000
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-applications-bom
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Configure Maven GitHub server
+        shell: bash
+        run: |
+          cat > "$HOME/.m2/settings.xml" <<'EOF'
+          <settings>
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${env.GITHUB_ACTOR}</username>
+                <password>${env.GITHUB_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish application releases to GitHub Maven
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/publish_application_releases.py \
+            --source .github/applications-source.xml \
+            --state applications-state.json \
+            --owner nabu-platform
+
+      - name: Generate concrete applications BOM
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/generate_applications_bom.py \
+            --source .github/applications-source.xml \
+            --output applications-bom-release.xml \
+            --owner nabu-platform \
+            --state applications-state.json \
+            --bom-artifact-id applications-bom \
+            --bom-version "${{ inputs.releaseVersion }}"
+
+      - name: Publish concrete applications BOM
+        run: >-
+          mvn -B deploy:deploy-file
+          -Durl=https://maven.pkg.github.com/nabu-platform/maven
+          -DrepositoryId=github
+          -Dfile=applications-bom-release.xml
+          -DpomFile=applications-bom-release.xml
+          -Dpackaging=pom
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate floating applications BOM alias
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/generate_applications_bom.py \
+            --source .github/applications-source.xml \
+            --output applications-bom.xml \
+            --owner nabu-platform \
+            --state applications-state.json \
+            --bom-artifact-id applications-bom \
+            --bom-version "${{ inputs.bomVersion }}"
+
+      - name: Publish floating applications BOM alias
+        run: >-
+          mvn -B deploy:deploy-file
+          -Durl=https://maven.pkg.github.com/nabu-platform/maven
+          -DrepositoryId=github
+          -Dfile=applications-bom.xml
+          -DpomFile=applications-bom.xml
+          -Dpackaging=pom
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate concrete applications parent POM
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/generate_applications_parent.py \
+            --output applications-release.xml \
+            --version "${{ inputs.releaseVersion }}" \
+            --bom-version "${{ inputs.releaseVersion }}" \
+            --owner nabu-platform
+
+      - name: Publish concrete applications parent POM
+        run: >-
+          mvn -B deploy:deploy-file
+          -Durl=https://maven.pkg.github.com/nabu-platform/maven
+          -DrepositoryId=github
+          -Dfile=applications-release.xml
+          -DpomFile=applications-release.xml
+          -Dpackaging=pom
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate floating applications parent alias
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/generate_applications_parent.py \
+            --output applications.xml \
+            --version "${{ inputs.bomVersion }}" \
+            --bom-version "${{ inputs.bomVersion }}" \
+            --owner nabu-platform
+
+      - name: Publish floating applications parent alias
+        run: >-
+          mvn -B deploy:deploy-file
+          -Durl=https://maven.pkg.github.com/nabu-platform/maven
+          -DrepositoryId=github
+          -Dfile=applications.xml
+          -DpomFile=applications.xml
+          -Dpackaging=pom
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
