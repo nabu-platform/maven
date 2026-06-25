@@ -11,6 +11,15 @@ import xml.etree.ElementTree as ET
 MAVEN_NS = 'http://maven.apache.org/POM/4.0.0'
 NS = {'m': MAVEN_NS}
 ET.register_namespace('', MAVEN_NS)
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parent.parent
+
+
+def resolve_repo_path(path_value):
+	path = pathlib.Path(path_value)
+	if path.is_absolute():
+		return path
+	return REPO_ROOT / path
 
 
 def qualify(tag):
@@ -41,7 +50,7 @@ def find_text(element, tag):
 
 
 def load_states(state_path):
-	with open(state_path, 'r', encoding='utf-8') as handle:
+	with open(resolve_repo_path(state_path), 'r', encoding='utf-8') as handle:
 		return json.load(handle)
 
 
@@ -112,7 +121,7 @@ def collect_latest_versions(owner, dependencies, states):
 
 
 def build_bom(source_path, output_path, bom_artifact_id, bom_version, owner, state_path):
-	tree = ET.parse(source_path)
+	tree = ET.parse(resolve_repo_path(source_path))
 	root = tree.getroot()
 	dependency_management = find_child(root, 'dependencyManagement')
 	if dependency_management is None:
@@ -159,7 +168,7 @@ def build_bom(source_path, output_path, bom_artifact_id, bom_version, owner, sta
 			element.text = child_value
 
 	ET.indent(bom_root, space='  ')
-	ET.ElementTree(bom_root).write(output_path, encoding='utf-8', xml_declaration=False)
+	ET.ElementTree(bom_root).write(resolve_repo_path(output_path), encoding='utf-8', xml_declaration=False)
 
 
 if __name__ == '__main__':

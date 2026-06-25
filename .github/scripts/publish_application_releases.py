@@ -13,6 +13,15 @@ import zipfile
 
 MAVEN_NS = 'http://maven.apache.org/POM/4.0.0'
 NS = {'m': MAVEN_NS}
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parent.parent
+
+
+def resolve_repo_path(path_value):
+	path = pathlib.Path(path_value)
+	if path.is_absolute():
+		return path
+	return REPO_ROOT / path
 
 
 def find_child(element, tag):
@@ -51,7 +60,7 @@ def github_request(url):
 
 
 def load_states(state_path):
-	path = pathlib.Path(state_path)
+	path = resolve_repo_path(state_path)
 	if not path.exists():
 		return {}
 	with open(path, 'r', encoding='utf-8') as handle:
@@ -59,7 +68,7 @@ def load_states(state_path):
 
 
 def save_states(state_path, states):
-	with open(state_path, 'w', encoding='utf-8') as handle:
+	with open(resolve_repo_path(state_path), 'w', encoding='utf-8') as handle:
 		json.dump(states, handle, indent=2, sort_keys=True)
 		handle.write('\n')
 
@@ -78,7 +87,7 @@ def ensure_states(state_path, dependencies):
 
 
 def load_managed_dependencies(source_path):
-	root = ET.parse(source_path).getroot()
+	root = ET.parse(resolve_repo_path(source_path)).getroot()
 	dependency_management = find_child(root, 'dependencyManagement')
 	if dependency_management is None:
 		raise RuntimeError(f'No dependencyManagement found in {source_path}')
@@ -179,7 +188,7 @@ def main():
 	parser.add_argument('--owner', required=True)
 	parser.add_argument('--state', required=True)
 	args = parser.parse_args()
-	output_dir = pathlib.Path('downloaded-application-releases')
+	output_dir = REPO_ROOT / 'downloaded-application-releases'
 	output_dir.mkdir(exist_ok=True)
 	dependencies = load_managed_dependencies(args.source)
 	states = ensure_states(args.state, dependencies)
