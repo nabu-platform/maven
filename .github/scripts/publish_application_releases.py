@@ -86,6 +86,11 @@ def ensure_states(state_path, dependencies):
 	return states
 
 
+PLUGIN_ARTIFACTS = [
+	('nabu', 'maven-plugin-application', 'jar'),
+]
+
+
 def load_managed_dependencies(source_path):
 	root = ET.parse(resolve_repo_path(source_path)).getroot()
 	dependency_management = find_child(root, 'dependencyManagement')
@@ -102,6 +107,8 @@ def load_managed_dependencies(source_path):
 		type_value = find_text(dependency, 'type') or 'zip'
 		if group_id and artifact_id and version:
 			result.append((group_id, artifact_id, version, type_value))
+	for group_id, artifact_id, type_value in PLUGIN_ARTIFACTS:
+		result.append((group_id, artifact_id, '1.0-SNAPSHOT', type_value))
 	return result
 
 
