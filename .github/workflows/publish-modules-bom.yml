@@ -7,10 +7,6 @@ on:
         description: Floating published version for modules-bom/projects parent
         required: true
         default: 1.0-SNAPSHOT
-      releaseVersion:
-        description: Concrete published version for modules-bom/projects parent
-        required: true
-        default: 1.0-SNAPSHOT.20260622135217
 
 permissions:
   contents: read
@@ -69,6 +65,13 @@ jobs:
             --include nabu:maven-plugin-install:jar \
             --include nabu:maven-plugin-environment:jar
 
+      - name: Determine concrete release version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "releaseVersion=${{ inputs.bomVersion }}.$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+
       - name: Generate concrete modules BOM from latest published packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -79,7 +82,7 @@ jobs:
             --owner nabu-platform \
             --state modules-state.json \
             --bom-artifact-id modules-bom \
-            --bom-version "${{ inputs.releaseVersion }}"
+            --bom-version "${{ steps.version.outputs.releaseVersion }}"
 
       - name: Publish concrete modules BOM
         run: >-
@@ -123,8 +126,8 @@ jobs:
         run: |
           python3 .github/scripts/generate_modules_parent.py \
             --output projects-release.xml \
-            --version "${{ inputs.releaseVersion }}" \
-            --bom-version "${{ inputs.releaseVersion }}" \
+            --version "${{ steps.version.outputs.releaseVersion }}" \
+            --bom-version "${{ steps.version.outputs.releaseVersion }}" \
             --owner nabu-platform
 
       - name: Publish concrete projects parent POM
