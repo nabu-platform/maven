@@ -90,7 +90,7 @@ def load_managed_dependencies(source_path):
 		group_id = find_text(dependency, 'groupId')
 		artifact_id = find_text(dependency, 'artifactId')
 		version = find_text(dependency, 'version')
-		type_value = find_text(dependency, 'type') or 'jar'
+		type_value = find_text(dependency, 'type') or 'nar'
 		if group_id and artifact_id and version:
 			result.append((group_id, artifact_id, version, type_value))
 	return result
